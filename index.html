@@ -36,12 +36,23 @@
   main{
     padding:14px;
     display:grid;
-    grid-template-columns: 520px 1fr;
+    grid-template-columns: 500px 1fr;
     gap:14px;
     align-items:start;
   }
   @media (max-width: 1100px){
     main{ grid-template-columns: 1fr; }
+  }
+  .workspace{
+    display:grid;
+    grid-template-columns:minmax(0, 1.7fr) minmax(360px, 0.95fr);
+    gap:12px;
+    align-items:start;
+  }
+  .workspace #contourCard{ grid-column:1 / -1; }
+  @media (max-width: 1500px){
+    .workspace{ grid-template-columns:1fr; }
+    .workspace #contourCard{ grid-column:auto; }
   }
 
   .card{
@@ -115,7 +126,7 @@
   .plot-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
   .plot-title{ font-weight:700; font-size:13px; }
   .btnbar{ display:flex; gap:8px; flex-wrap:wrap; }
-  #plotSvg{ width:100%; height:440px; border-radius:12px; border:1px solid var(--line2); background:#fff; }
+  #plotSvg{ width:100%; height:auto; aspect-ratio:760 / 440; display:block; border-radius:12px; border:1px solid var(--line2); background:#fff; }
   .legend{ margin-top:8px; display:flex; gap:10px; flex-wrap:wrap; }
   .legitem{ display:flex; align-items:center; gap:6px; font-size:11px; border:1px solid var(--line2); background:rgba(15,23,42,0.02); border-radius:999px; padding:3px 8px; cursor:pointer; }
   .swatch{ width:10px; height:10px; border-radius:2px; }
@@ -342,6 +353,13 @@
     flex-wrap:wrap;
   }
   .plotHelp{ margin-top:8px; }
+  .compactCard{ padding:10px 12px; }
+  .compactCard .modeCardHead{ align-items:center; }
+  .compactCard .small{ margin:0; }
+  .benchTableWrap{ margin-top:8px; overflow:auto; }
+  .benchTableWrap table{ min-width:520px; }
+  .rightCardNote{ margin-top:6px; }
+
 
 </style>
 </head>
@@ -352,26 +370,16 @@
 
 <main>
   <section>
-    <div class="card" id="modeCard">
+    <div class="card compactCard" id="modeCard">
       <div class="modeCardHead">
-        <div>
-          <h2 style="margin-bottom:8px;">App mode and ML model</h2>
-          <div class="small muted">Use FE benchmark mode for exact FE cases. Use ML prediction mode for free ML inputs within the model development domain.</div>
-        </div>
+        <div class="small muted">Mode</div>
         <div class="seg" role="tablist" aria-label="Application mode">
           <button id="btnModeFe" class="active" type="button">FE benchmark mode</button>
           <button id="btnModeMl" type="button">ML prediction mode</button>
         </div>
       </div>
-      <div class="divider"></div>
-      <div class="btnrow">
-        <div class="small muted">Model status:</div>
-        <div class="small muted" id="mlLoaderStatus">Waiting to load model...</div>
-        <button id="btnMlRetry" type="button">Retry model load</button>
-        <label class="fileBtn" for="mlModelFile">Load model file</label>
-        <input id="mlModelFile" class="hide" type="file" accept=".json,application/json">
-      </div>
-      <div class="small muted mlInputNote" id="modeNote">Hosted use is simplest when <span class="mono">xgb_model.json</span> is in the same folder as <span class="mono">index.html</span>. Local <span class="mono">file://</span> previews can use the model file loader above.</div>
+      <div id="mlLoaderStatus" class="hide" aria-hidden="true"></div>
+      <input id="mlModelFile" class="hide" type="file" accept=".json,application/json">
     </div>
 
     <div class="card" id="feInputCard">
@@ -606,30 +614,26 @@
         <tbody id="outTable"></tbody>
       </table>
       <div class="divider"></div>
-      <div class="small" style="font-weight:700;">Prequalification</div>
+      <div class="small" style="font-weight:700;">Prequalification benchmark</div>
       <div class="row" style="margin-top:6px;">
-        <div class="small muted">Check vs 0.8<span class="sym"><i>M</i><sub>p</sub></span></div>
+        <div class="small muted">Check vs 0.8<span class="sym"><i>M</i><sub>p</sub></span> at <span class="sym"><i>M</i><sub>0.04</sub></span></div>
         <div id="qualMp"></div>
-      </div>
-      <div class="row" style="margin-top:6px;">
-        <div class="small muted">Check vs 0.8<span class="sym"><i>M</i><sub>p,RWS</sub></span></div>
-        <div id="qualMpRws"></div>
       </div>
       <div class="small muted" id="qualMargins" style="margin-top:6px;"></div>
 
       <div class="infobox" style="margin-top:10px;">
         <div class="small muted">
-          Prequalification criteria shown for reference:
+          Prequalification benchmark shown for reference against <span class="mono">ANSI/AISC 358-22</span>, <i>Prequalified Connections for Special and Intermediate Steel Moment Frames for Seismic Applications</i>:
           <div style="margin-top:4px;">
-            <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span> and
-            <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p,RWS</sub></span>.
+            <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>.
           </div>
         </div>
       </div>
+      <div id="qualMpRws" class="hide" aria-hidden="true"></div>
     </div>
   </section>
 
-  <section>
+  <section class="workspace">
     <div class="card plotcard">
       <div class="plot-head">
         <div>
@@ -657,18 +661,19 @@
       <h2>ML benchmark and validation</h2>
       <div class="btnrow">
         <button id="btnMlBench">Run full FE benchmark</button>
-        <div class="small muted" id="mlStatus">Loading ML model...</div>
+        <div class="small muted hide" id="mlStatus" aria-hidden="true">Loading ML model...</div>
       </div>
 
-      <div class="small muted mlNote" id="mlBenchNote">
-        In FE mode the benchmark compares the active FE case with the ML prediction. In ML mode an exact FE benchmark appears only when the free ML inputs match a discrete FE case.
+      <div class="small muted mlNote rightCardNote" id="mlBenchNote">
+        In FE mode the active FE case is compared against the ML prediction. In ML mode an exact FE benchmark appears only when the free ML input matches a discrete FE case.
       </div>
 
       <div class="infobox" id="mlSummary" style="margin-top:8px;">
         ML comparison metrics will appear here when the model has loaded.
       </div>
 
-      <table id="mlKeyCompareTable" style="margin-top:8px;">
+      <div class="benchTableWrap">
+      <table id="mlKeyCompareTable">
         <thead>
           <tr>
             <th>&theta; (rad)</th>
@@ -680,6 +685,7 @@
         </thead>
         <tbody></tbody>
       </table>
+      </div>
 
       <div class="infobox" id="mlGlobalBox" style="margin-top:10px;">
         <div class="small muted">Dataset-wide benchmark has not been run yet.</div>
@@ -1124,17 +1130,16 @@
     }
     el.outTable.innerHTML = html;
 
-    // Qualification
-    el.qualMp.innerHTML = '';
-    el.qualMp.appendChild(badge(r[schema.Qual_vs_Mp]));
-    el.qualMpRws.innerHTML = '';
-    el.qualMpRws.appendChild(badge(r[schema.Qual_vs_Mp_RWS]));
+    // Qualification benchmark
+    if (el.qualMp) {
+      el.qualMp.innerHTML = '';
+      el.qualMp.appendChild(badge(r[schema.Qual_vs_Mp]));
+    }
+    if (el.qualMpRws) el.qualMpRws.innerHTML = '';
 
     const m1 = r[schema.Margin_vs_0_8Mp];
-    const m2 = r[schema.Margin_vs_0_8Mp_RWS];
     const m1s = Number.isFinite(m1) ? m1.toFixed(3) : 'N/A';
-    const m2s = Number.isFinite(m2) ? m2.toFixed(3) : 'N/A';
-    el.qualMargins.textContent = `Margins: M0.04/(0.8Mp) = ${m1s}, M0.04/(0.8Mp,RWS) = ${m2s}.`;
+    if (el.qualMargins) el.qualMargins.textContent = `Benchmark ratio: M0.04/(0.8Mp) = ${m1s}.`;
   }
 
   function updateInfoLines(r) {
@@ -1777,7 +1782,7 @@
         <div class="metricTile"><div class="k"><span class="sym"><i>M</i><sub>0.04</sub></span></div><div class="v">${fmt2(m04)} kN·m</div></div>
         <div class="metricTile"><div class="k"><span class="sym"><i>M</i><sub>0.06</sub></span></div><div class="v">${fmt2(m06)} kN·m</div></div>
       </div>
-      <div class="small" style="margin-top:8px;">Prequalification vs 0.8<span class="sym"><i>M</i><sub>p</sub></span> at <span class="sym"><i>M</i><sub>0.04</sub></span>: ${badgeHtml(qualFromMoment(m04, pred.Mp))}.</div>
+      <div class="small" style="margin-top:8px;">Prequalification benchmark (ANSI/AISC 358-22 reference): ${badgeHtml(qualFromMoment(m04, pred.Mp))} based on <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>.</div>
       <div class="small muted" style="margin-top:6px;">${exactText}</div>
     `;
 
@@ -1844,12 +1849,9 @@
     const mlM06 = pred.M[idx06];
 
     const feQualMp = r[schema.Qual_vs_Mp];
-    const feQualMpRws = r[schema.Qual_vs_Mp_RWS];
     const mlQualMp = qualFromMoment(mlM04, r[schema.Mp_kNm]);
-    const mlQualMpRws = qualFromMoment(mlM04, r[schema.Mp_RWS_kNm]);
 
     const matchMp = (feQualMp === mlQualMp);
-    const matchMpRws = (feQualMpRws === mlQualMpRws);
 
     el.mlSummary.innerHTML = `
       ${summaryLead}
@@ -1866,9 +1868,7 @@
         <span class="sym"><i>M</i><sub>0.06</sub></span>: FE = ${fmt2(feM06)} kN·m, ML = ${fmt2(mlM06)} kN·m, &Delta; = ${signedFmt2(mlM06 - feM06)} kN·m.
       </div>
       <div class="small" style="margin-top:4px;">
-        Prequalification vs 0.8<span class="sym"><i>M</i><sub>p</sub></span>: FE ${feQualMp}, ML ${mlQualMp} ${matchBadge(matchMp)}.
-        <span style="margin-left:10px;"></span>
-        vs 0.8<span class="sym"><i>M</i><sub>p,RWS</sub></span>: FE ${feQualMpRws}, ML ${mlQualMpRws} ${matchBadge(matchMpRws)}.
+        Prequalification benchmark against <span class="mono">ANSI/AISC 358-22</span>: FE ${feQualMp}, ML ${mlQualMp} ${matchBadge(matchMp)} based on <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>.
       </div>
     `;
 
@@ -1964,7 +1964,7 @@
       <div class="small" style="margin-top:4px;">
         Mean |&Delta;<span class="sym"><i>M</i><sub>0.04</sub></span>| = ${fmt2(g.m04Mae)} kN·m,
         mean |&Delta;<span class="sym"><i>M</i><sub>0.06</sub></span>| = ${fmt2(g.m06Mae)} kN·m,
-        prequalification agreement = ${fmt2(g.qualMpAgree)}% vs 0.8<span class="sym"><i>M</i><sub>p</sub></span> and ${fmt2(g.qualMpRwsAgree)}% vs 0.8<span class="sym"><i>M</i><sub>p,RWS</sub></span>.
+        prequalification benchmark agreement = ${fmt2(g.qualMpAgree)}% against 0.8<span class="sym"><i>M</i><sub>p</sub></span>.
       </div>
       <div class="small muted" style="margin-top:4px;">
         FE backbone points that are unavailable are ignored in the aggregate error metrics. Rows affected: ${g.rowsWithMissing}.
