@@ -268,6 +268,7 @@
   .mlNote{ margin-top:8px; }
   .mlStatusOk{ color:var(--muted); }
   .mlStatusBad{ color:var(--bad); font-weight:700; }
+  #mlStatus, #mlLoaderStatus{ display:none !important; }
   .mlSubtle{ color:var(--muted); font-size:11px; }
   .mlBadge{
     display:inline-block;
@@ -616,16 +617,22 @@
       <div class="divider"></div>
       <div class="small" style="font-weight:700;">Prequalification benchmark</div>
       <div class="row" style="margin-top:6px;">
-        <div class="small muted">Check vs 0.8<span class="sym"><i>M</i><sub>p</sub></span> at <span class="sym"><i>M</i><sub>0.04</sub></span></div>
+        <div class="small muted">Strength retention at 0.04 rad</div>
         <div id="qualMp"></div>
       </div>
+      <div class="row" style="margin-top:6px;">
+        <div class="small muted">Drift-capacity benchmark using <span class="sym"><i>θ</i><sub>u</sub></span> from the 20% drop in <span class="sym"><i>M</i><sub>c</sub></span></div>
+        <div id="qualThetaU"></div>
+      </div>
       <div class="small muted" id="qualMargins" style="margin-top:6px;"></div>
+      <div class="small muted" id="qualThetaInfo" style="margin-top:4px;"></div>
 
       <div class="infobox" style="margin-top:10px;">
         <div class="small muted">
-          Prequalification benchmark shown for reference against <span class="mono">ANSI/AISC 358-22</span>, <i>Prequalified Connections for Special and Intermediate Steel Moment Frames for Seismic Applications</i>:
+          In this thesis, prequalification language is used as benchmarking against published AISC/FEMA acceptance criteria. Formal AISC prequalification is test-evidence based under <span class="mono">ANSI/AISC 358</span>. The strength-retention check shown here follows <span class="mono">ANSI/AISC 341-16 Section E3.6b</span>, while the drift-capacity benchmark uses <span class="sym"><i>θ</i><sub>u</sub></span> taken at the 20% drop from <span class="sym"><i>M</i><sub>c</sub></span>, consistent with Chapter 3.
           <div style="margin-top:4px;">
-            <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>.
+            <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>,
+            <span class="sym"><i>θ</i><sub>u</sub></span> ≥ 0.04 rad.
           </div>
         </div>
       </div>
@@ -817,8 +824,10 @@
     warn: document.getElementById('warn'),
 
     qualMp: document.getElementById('qualMp'),
+    qualThetaU: document.getElementById('qualThetaU'),
     qualMpRws: document.getElementById('qualMpRws'),
     qualMargins: document.getElementById('qualMargins'),
+    qualThetaInfo: document.getElementById('qualThetaInfo'),
 
     btnFull: document.getElementById('btnFull'),
 
@@ -1108,6 +1117,7 @@
     const vm = r[schema.VonMises_CF_norm];
     const pq = r[schema.PEEQ_CF_norm];
     const st = r[schema.Stress_CF_over_Fy_norm];
+    const ult = computeUltimateRotationFromCurve(r[schema.backbone_M_kNm]);
 
     const out = [
       {lab:'<span class="sym"><i>M</i><sub>y</sub></span> (kN·m)', val: fmt1(r[schema.My_kNm])},
@@ -1118,6 +1128,7 @@
       {lab:'<span class="sym"><i>M</i><sub>p,RWS</sub></span> (kN·m)', val: fmt1(r[schema.Mp_RWS_kNm])},
       {lab:'<span class="sym"><i>θ</i><sub>y</sub></span> (rad)', val: fmt5(r[schema.theta_y_rad])},
       {lab:'<span class="sym"><i>θ</i><sub>c</sub></span> (rad)', val: fmt5(r[schema.theta_c_rad])},
+      {lab:'<span class="sym"><i>θ</i><sub>u</sub></span> (rad)', val: ultimateThetaHtml(ult)},
       {lab:'von Mises at column face (normalised)', val: fmt2(vm), warn: (Number.isFinite(vm) && vm > 1)},
       {lab:'PEEQ at column face (normalised)', val: fmt2(pq), warn: (Number.isFinite(pq) && pq > 1)},
       {lab:'Stress@CF/<span class="sym"><i>F</i><sub>y</sub></span> (normalised)', val: fmt2(st), warn: (Number.isFinite(st) && st > 1)},
@@ -1130,16 +1141,24 @@
     }
     el.outTable.innerHTML = html;
 
-    // Qualification benchmark
     if (el.qualMp) {
       el.qualMp.innerHTML = '';
       el.qualMp.appendChild(badge(r[schema.Qual_vs_Mp]));
+    }
+    if (el.qualThetaU) {
+      el.qualThetaU.innerHTML = '';
+      el.qualThetaU.appendChild(badge(qualFromUltimateTheta(ult)));
     }
     if (el.qualMpRws) el.qualMpRws.innerHTML = '';
 
     const m1 = r[schema.Margin_vs_0_8Mp];
     const m1s = Number.isFinite(m1) ? m1.toFixed(3) : 'N/A';
-    if (el.qualMargins) el.qualMargins.textContent = `Benchmark ratio: M0.04/(0.8Mp) = ${m1s}.`;
+    if (el.qualMargins) {
+      el.qualMargins.innerHTML = `Benchmark ratio: <span class="sym"><i>M</i><sub>0.04</sub></span>/0.8<span class="sym"><i>M</i><sub>p</sub></span> = <span class="mono">${m1s}</span>.`;
+    }
+    if (el.qualThetaInfo) {
+      el.qualThetaInfo.innerHTML = `Ultimate rotation benchmark: <span class="sym"><i>θ</i><sub>u</sub></span> = <span class="mono">${ultimateThetaHtml(ult)}</span> rad${ultimateThetaSuffix(ult)}.`;
+    }
   }
 
   function updateInfoLines(r) {
@@ -1343,12 +1362,14 @@
 
   function setMlStatus(text, good = true) {
     if (el.mlStatus) {
-      el.mlStatus.textContent = text;
-      el.mlStatus.className = good ? 'small muted mlStatusOk' : 'small muted mlStatusBad';
+      el.mlStatus.textContent = '';
+      el.mlStatus.className = 'hide';
+      el.mlStatus.setAttribute('aria-hidden', 'true');
     }
     if (el.mlLoaderStatus) {
-      el.mlLoaderStatus.textContent = text;
-      el.mlLoaderStatus.className = good ? 'small muted mlStatusOk' : 'small muted mlStatusBad';
+      el.mlLoaderStatus.textContent = '';
+      el.mlLoaderStatus.className = 'hide';
+      el.mlLoaderStatus.setAttribute('aria-hidden', 'true');
     }
   }
 
@@ -1673,6 +1694,62 @@
     return (mValue >= 0.8 * limitMoment) ? 'OK' : 'Failed';
   }
 
+  function computeUltimateRotationFromCurve(curve) {
+    const pts = [];
+    for (let i = 0; i < thetaRad.length; i++) {
+      const th = thetaRad[i];
+      const m = curve[i];
+      if (th >= 0 && Number.isFinite(m)) pts.push({ theta: th, M: m });
+    }
+    if (!pts.length) return { theta: NaN, Mc: NaN, Mu: NaN, reached: false, thetaPeak: NaN };
+
+    let peakIdx = 0;
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].M > pts[peakIdx].M) peakIdx = i;
+    }
+
+    const Mc = pts[peakIdx].M;
+    const Mu = 0.8 * Mc;
+
+    for (let i = peakIdx; i < pts.length; i++) {
+      if (pts[i].M <= Mu) {
+        if (i === peakIdx) {
+          return { theta: pts[i].theta, Mc, Mu, reached: true, thetaPeak: pts[peakIdx].theta };
+        }
+        const a = pts[i - 1];
+        const b = pts[i];
+        let theta = b.theta;
+        if (Number.isFinite(a.M) && Number.isFinite(b.M) && b.M !== a.M) {
+          const frac = (Mu - a.M) / (b.M - a.M);
+          if (Number.isFinite(frac)) {
+            const clamped = Math.max(0, Math.min(1, frac));
+            theta = a.theta + clamped * (b.theta - a.theta);
+          }
+        }
+        return { theta, Mc, Mu, reached: true, thetaPeak: pts[peakIdx].theta };
+      }
+    }
+
+    const last = pts[pts.length - 1];
+    return { theta: last.theta, Mc, Mu, reached: false, thetaPeak: pts[peakIdx].theta };
+  }
+
+  function qualFromUltimateTheta(info) {
+    if (!info || !Number.isFinite(info.theta)) return 'N/A';
+    return info.theta >= 0.04 ? 'OK' : 'Failed';
+  }
+
+  function ultimateThetaHtml(info, digits = 4) {
+    if (!info || !Number.isFinite(info.theta)) return 'N/A';
+    const val = info.theta.toFixed(digits);
+    return info.reached ? val : `&ge;${val}`;
+  }
+
+  function ultimateThetaSuffix(info) {
+    if (!info || !Number.isFinite(info.theta)) return '';
+    return info.reached ? '' : ' (20% drop not reached within the available backbone window)';
+  }
+
   function matchBadge(match) {
     const cls = match ? 'match' : 'mismatch';
     const text = match ? 'match' : 'mismatch';
@@ -1768,6 +1845,9 @@
     const idx06 = thetaRad.indexOf(0.06);
     const m04 = pred.M[idx04];
     const m06 = pred.M[idx06];
+    const thetaU = computeUltimateRotationFromCurve(pred.M);
+    const qualStrength = qualFromMoment(m04, pred.Mp);
+    const qualDrift = qualFromUltimateTheta(thetaU);
     const exactIdx = getExactMlBenchmarkRowIndex();
     const exactText = (exactIdx === undefined)
       ? 'No exact FE case at the current free-input point.'
@@ -1782,7 +1862,8 @@
         <div class="metricTile"><div class="k"><span class="sym"><i>M</i><sub>0.04</sub></span></div><div class="v">${fmt2(m04)} kN·m</div></div>
         <div class="metricTile"><div class="k"><span class="sym"><i>M</i><sub>0.06</sub></span></div><div class="v">${fmt2(m06)} kN·m</div></div>
       </div>
-      <div class="small" style="margin-top:8px;">Prequalification benchmark (ANSI/AISC 358-22 reference): ${badgeHtml(qualFromMoment(m04, pred.Mp))} based on <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>.</div>
+      <div class="small" style="margin-top:8px;">Prequalification benchmark: strength retention ${badgeHtml(qualStrength)} based on <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>, drift capacity ${badgeHtml(qualDrift)} based on <span class="sym"><i>θ</i><sub>u</sub></span> ≥ 0.04 rad.</div>
+      <div class="small muted" style="margin-top:6px;">Ultimate rotation from the 20% drop in <span class="sym"><i>M</i><sub>c</sub></span>: <span class="sym"><i>θ</i><sub>u</sub></span> = <span class="mono">${ultimateThetaHtml(thetaU)}</span> rad${ultimateThetaSuffix(thetaU)}.</div>
       <div class="small muted" style="margin-top:6px;">${exactText}</div>
     `;
 
@@ -1848,10 +1929,16 @@
     const mlM04 = pred.M[idx04];
     const mlM06 = pred.M[idx06];
 
+    const feThetaU = computeUltimateRotationFromCurve(feCurve);
+    const mlThetaU = computeUltimateRotationFromCurve(pred.M);
+
     const feQualMp = r[schema.Qual_vs_Mp];
     const mlQualMp = qualFromMoment(mlM04, r[schema.Mp_kNm]);
+    const feQualTheta = qualFromUltimateTheta(feThetaU);
+    const mlQualTheta = qualFromUltimateTheta(mlThetaU);
 
     const matchMp = (feQualMp === mlQualMp);
+    const matchTheta = (feQualTheta === mlQualTheta);
 
     el.mlSummary.innerHTML = `
       ${summaryLead}
@@ -1868,7 +1955,10 @@
         <span class="sym"><i>M</i><sub>0.06</sub></span>: FE = ${fmt2(feM06)} kN·m, ML = ${fmt2(mlM06)} kN·m, &Delta; = ${signedFmt2(mlM06 - feM06)} kN·m.
       </div>
       <div class="small" style="margin-top:4px;">
-        Prequalification benchmark against <span class="mono">ANSI/AISC 358-22</span>: FE ${feQualMp}, ML ${mlQualMp} ${matchBadge(matchMp)} based on <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>.
+        <span class="sym"><i>θ</i><sub>u</sub></span> from the 20% drop in <span class="sym"><i>M</i><sub>c</sub></span>: FE = <span class="mono">${ultimateThetaHtml(feThetaU)}</span> rad, ML = <span class="mono">${ultimateThetaHtml(mlThetaU)}</span> rad.
+      </div>
+      <div class="small" style="margin-top:4px;">
+        Prequalification benchmark: strength retention FE ${feQualMp}, ML ${mlQualMp} ${matchBadge(matchMp)} based on <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>; drift capacity FE ${feQualTheta}, ML ${mlQualTheta} ${matchBadge(matchTheta)} based on <span class="sym"><i>θ</i><sub>u</sub></span> ≥ 0.04 rad.
       </div>
     `;
 
@@ -1933,16 +2023,6 @@
     if (mlOverlay.overlay) attrs['stroke-dasharray'] = '9 6';
 
     g.appendChild(svgEl('path', attrs));
-
-    const tag = svgEl('text', {
-      x: 68,
-      y: 18,
-      'text-anchor': 'start',
-      'font-size': '10',
-      fill: 'rgba(15,23,42,0.72)'
-    });
-    tag.textContent = mlOverlay.overlay ? 'ML curve shown as dashed black line' : 'ML curve shown as black line';
-    g.appendChild(tag);
   }
 
   function renderMlGlobalSummary() {
@@ -1964,10 +2044,11 @@
       <div class="small" style="margin-top:4px;">
         Mean |&Delta;<span class="sym"><i>M</i><sub>0.04</sub></span>| = ${fmt2(g.m04Mae)} kN·m,
         mean |&Delta;<span class="sym"><i>M</i><sub>0.06</sub></span>| = ${fmt2(g.m06Mae)} kN·m,
-        prequalification benchmark agreement = ${fmt2(g.qualMpAgree)}% against 0.8<span class="sym"><i>M</i><sub>p</sub></span>.
+        mean |&Delta;<span class="sym"><i>θ</i><sub>u</sub></span>| = ${fmt5(g.thetaUMae)} rad.
       </div>
-      <div class="small muted" style="margin-top:4px;">
-        FE backbone points that are unavailable are ignored in the aggregate error metrics. Rows affected: ${g.rowsWithMissing}.
+      <div class="small" style="margin-top:4px;">
+        Prequalification benchmark agreement = ${fmt2(g.qualMpAgree)}% against <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>,
+        drift-capacity benchmark agreement = ${fmt2(g.qualThetaAgree)}% against <span class="sym"><i>θ</i><sub>u</sub></span> ≥ 0.04 rad.
       </div>
     `;
   }
@@ -1976,7 +2057,7 @@
     if (!ml.ready || !ml.model || ml.busy) return;
     ml.busy = true;
     if (el.btnMlBench) el.btnMlBench.disabled = true;
-    setMlStatus('Running full FE benchmark...', true);
+    setMlStatus('', true);
     if (el.mlGlobalBox) el.mlGlobalBox.innerHTML = '<div class="small muted">Benchmarking 0 / ' + rows.length + ' FE models...</div>';
 
     const idx04 = thetaRad.indexOf(0.04);
@@ -1986,14 +2067,15 @@
     let sqSum = 0;
     let normAbsSum = 0;
     let validCount = 0;
-    let rowsWithMissing = 0;
     const r2Vals = [];
     let m04AbsSum = 0;
     let m04Count = 0;
     let m06AbsSum = 0;
     let m06Count = 0;
+    let thetaUAbsSum = 0;
+    let thetaUCount = 0;
     let agreeMp = 0;
-    let agreeMpRws = 0;
+    let agreeTheta = 0;
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
@@ -2005,18 +2087,14 @@
 
       let meanFe = 0;
       let n = 0;
-      let missingThisRow = 0;
 
       for (let k = 0; k < fe.length; k++) {
         if (Number.isFinite(fe[k]) && Number.isFinite(mlCurve[k])) {
           meanFe += fe[k];
           n += 1;
-        } else if (!Number.isFinite(fe[k])) {
-          missingThisRow += 1;
         }
       }
 
-      if (missingThisRow > 0) rowsWithMissing += 1;
       if (!n) continue;
       meanFe /= n;
 
@@ -2047,10 +2125,18 @@
         m06Count += 1;
       }
 
+      const feThetaU = computeUltimateRotationFromCurve(fe);
+      const mlThetaU = computeUltimateRotationFromCurve(mlCurve);
+      if (Number.isFinite(feThetaU.theta) && Number.isFinite(mlThetaU.theta)) {
+        thetaUAbsSum += Math.abs(mlThetaU.theta - feThetaU.theta);
+        thetaUCount += 1;
+      }
+
       const mlQualMp = qualFromMoment(mlCurve[idx04], r[schema.Mp_kNm]);
-      const mlQualMpRws = qualFromMoment(mlCurve[idx04], r[schema.Mp_RWS_kNm]);
+      const feQualTheta = qualFromUltimateTheta(feThetaU);
+      const mlQualTheta = qualFromUltimateTheta(mlThetaU);
       if (mlQualMp === r[schema.Qual_vs_Mp]) agreeMp += 1;
-      if (mlQualMpRws === r[schema.Qual_vs_Mp_RWS]) agreeMpRws += 1;
+      if (mlQualTheta === feQualTheta) agreeTheta += 1;
 
       if ((i + 1) % 50 === 0 || i === rows.length - 1) {
         if (el.mlGlobalBox) {
@@ -2076,15 +2162,15 @@
       medianR2,
       m04Mae: m04Count ? (m04AbsSum / m04Count) : NaN,
       m06Mae: m06Count ? (m06AbsSum / m06Count) : NaN,
+      thetaUMae: thetaUCount ? (thetaUAbsSum / thetaUCount) : NaN,
       qualMpAgree: 100 * agreeMp / rows.length,
-      qualMpRwsAgree: 100 * agreeMpRws / rows.length,
-      rowsWithMissing,
+      qualThetaAgree: 100 * agreeTheta / rows.length,
     };
 
     renderMlGlobalSummary();
     ml.busy = false;
     if (el.btnMlBench) el.btnMlBench.disabled = false;
-    setMlStatus('ML model ready', true);
+    setMlStatus('', true);
   }
 
   function updatePlotToggleButtons() {
@@ -2200,7 +2286,7 @@
     ml.model = modelJson;
     ml.ready = true;
     ml.loadSource = sourceText || 'model';
-    setMlStatus('ML model ready', true);
+    setMlStatus('', true);
     if (el.btnMlBench) el.btnMlBench.disabled = false;
     updatePlotToggleButtons();
     renderMlPredictionSummary();
@@ -2236,7 +2322,7 @@
     ml.model = null;
     setMlStatus('Model file not found. Use Retry or Load model file.', false);
     if (el.mlSummary) {
-      el.mlSummary.innerHTML = '<div class="small muted">Add <span class="mono">xgb_model.json</span> to the same folder as this page, or use the model file loader above.</div>';
+      el.mlSummary.innerHTML = '<div class="small muted">Add <span class="mono">xgb_model.json</span> to the same folder as this page.</div>';
     }
     if (el.mlPredictionSummary) {
       el.mlPredictionSummary.innerHTML = '<div class="small muted">Load the ML model to enable free prediction mode.</div>';
@@ -2259,7 +2345,7 @@
       const text = await file.text();
       const modelJson = JSON.parse(text);
       applyLoadedMlModel(modelJson, 'local file');
-      setMlStatus('ML model ready (local file)', true);
+      setMlStatus('', true);
     } catch (err) {
       console.error(err);
       ml.ready = false;
