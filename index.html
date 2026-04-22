@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RWS 7575 GUI</title>
+<title>RWS Explorer and FE–ML Benchmark</title>
+<link rel="icon" type="image/png" href="favicon_3dmbc.png">
 <style>
   :root{
     --bg:#f6f7fb;
@@ -27,32 +28,48 @@
     background:var(--bg);
   }
   header{
-    padding:14px 16px 10px 16px;
+    padding:8px 12px 6px 12px;
     border-bottom:1px solid var(--line2);
     background:linear-gradient(180deg,#ffffff, #f6f7fb);
   }
-  .title{ font-weight:700; font-size:15px; }
-  .subtitle{ margin-top:4px; color:var(--muted); font-size:11px; }
+  .headerRow{ position:relative; padding-right:250px; min-height:60px; }
+  .titleWrap{ min-width:0; }
+  .title{ font-weight:700; font-size:14px; line-height:1.25; }
+  .subtitle{ display:none; }
+  .metaLine{ margin-top:4px; color:var(--muted); font-size:10.2px; line-height:1.3; white-space:nowrap; }
+  .metaLine a{ color:var(--accent); }
+  .brandBox{ position:absolute; top:0; right:0; display:flex; align-items:flex-start; gap:10px; }
+  .brandBox img{ display:block; width:auto; object-fit:contain; background:transparent; }
+  .brandBox .cityBrand{ height:56px; }
+  .brandBox .labBrand{ height:40px; }
+  #geomLine{ white-space:nowrap; font-size:10.4px; }
+  #caseGuideNote, #caseSelHint, #caseMatrix caption{ white-space:nowrap; }
+  #caseMatrix caption{ font-size:11px; }
+  @media (max-width: 980px){
+    .headerRow{ padding-right:0; min-height:0; }
+    .brandBox{ position:static; margin-top:6px; }
+    .metaLine{ white-space:normal; }
+  }
   main{
-    padding:14px;
+    padding:8px;
     display:grid;
-    grid-template-columns: 500px 1fr;
-    gap:14px;
+    grid-template-columns: 560px minmax(0,1fr);
+    gap:10px;
     align-items:start;
   }
   @media (max-width: 1100px){
     main{ grid-template-columns: 1fr; }
   }
-  .workspace{
+   .workspace{
     display:grid;
-    grid-template-columns:minmax(0, 1.7fr) minmax(360px, 0.95fr);
-    gap:12px;
+    grid-template-columns:minmax(0, 1fr) 620px;
+    gap:10px;
     align-items:start;
   }
-  .workspace #contourCard{ grid-column:1 / -1; }
-  @media (max-width: 1500px){
+  .workspace #benchSummaryCard, .workspace #contourCard, .workspace #feOutputCard{ grid-column:1 / -1; }
+  @media (max-width: 1440px){
     .workspace{ grid-template-columns:1fr; }
-    .workspace #contourCard{ grid-column:auto; }
+    .workspace #contourCard, .workspace #feOutputCard{ grid-column:auto; }
   }
 
   .card{
@@ -60,27 +77,29 @@
     border:1px solid var(--line2);
     border-radius:12px;
     box-shadow: 0 1px 0 rgba(15,23,42,0.03);
-    padding:12px;
-    margin-bottom:12px;
+    padding:10px;
+    margin-bottom:10px;
   }
   h2{
-    margin:0 0 10px 0;
-    font-size:12px;
+    margin:0 0 8px 0;
+    font-size:11.5px;
     letter-spacing:0.02em;
     text-transform:uppercase;
     color:rgba(15,23,42,0.72);
   }
-  .control{ margin-bottom:10px; }
+  .control{ margin-bottom:7px; }
   .control-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
-  .control-head .label{ font-size:11px; color:var(--muted); }
+  .control-head .label{ font-size:10.8px; color:var(--muted); }
   .control-head .value{ font-size:11px; font-weight:700; }
-  input[type="range"]{ width:100%; margin-top:6px; accent-color: var(--accent); }
-  .range-foot{ display:flex; justify-content:space-between; margin-top:3px; font-size:10px; color:var(--muted); }
+  input[type="range"]{ width:100%; margin-top:4px; accent-color: var(--accent); }
+  .range-foot{ display:flex; justify-content:space-between; margin-top:2px; font-size:10px; color:var(--muted); }
   .row{ display:flex; justify-content:space-between; gap:12px; align-items:baseline; }
   .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
   .mono.warn{ color:#b00020; font-weight:700; }
   .small{ font-size:11px; }
   .muted{ color:var(--muted); }
+  a{ color:var(--accent); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
   .divider{ height:1px; background:var(--line2); margin:10px 0; }
   .sym i{ font-style: italic; }
   .sym sub{ font-size: 0.8em; vertical-align: sub; }
@@ -99,7 +118,7 @@
   /* Thesis-style tables */
   table.thesis{ border-collapse:collapse; width:100%; font-size:11px; margin-top:8px; }
   table.thesis caption{ caption-side:top; text-align:center; font-style:italic; font-size:12px; margin-bottom:6px; }
-  table.thesis th, table.thesis td{ border:1px solid rgba(15,23,42,0.55); padding:4px 6px; text-align:center; }
+  table.thesis th, table.thesis td{ border:1px solid rgba(15,23,42,0.55); padding:3px 4px; text-align:center; font-size:10px; }
   table.thesis thead th{ font-weight:700; }
   table.thesis .superhdr{ font-weight:700; }
   table.case-matrix .rowhdr{ font-weight:700; background:rgba(15,23,42,0.04); }
@@ -113,7 +132,7 @@
     border:1px solid rgba(15,23,42,0.18);
     background:linear-gradient(180deg, #ffffff, #f8fafc);
     color:var(--text);
-    padding:7px 10px;
+    padding:6px 9px;
     border-radius:10px;
     font-size:11px;
     cursor:pointer;
@@ -122,16 +141,16 @@
   button.ghost{ background:transparent; }
   button.danger{ background:linear-gradient(180deg, rgba(220,38,38,1), rgba(185,28,28,1)); color:#fff; border-color:rgba(185,28,28,1); }
   button:disabled{ opacity:0.55; cursor:not-allowed; }
-  .plotcard{ padding:12px; }
+  .plotcard{ padding:10px; }
   .plot-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
   .plot-title{ font-weight:700; font-size:13px; }
   .btnbar{ display:flex; gap:8px; flex-wrap:wrap; }
-  #plotSvg{ width:100%; height:auto; aspect-ratio:760 / 440; display:block; border-radius:12px; border:1px solid var(--line2); background:#fff; }
-  .legend{ margin-top:8px; display:flex; gap:10px; flex-wrap:wrap; }
+  #plotSvg{ width:100%; height:auto; aspect-ratio:760 / 338; display:block; border-radius:12px; border:1px solid var(--line2); background:#fff; }
+  .legend{ margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; }
   .legitem{ display:flex; align-items:center; gap:6px; font-size:11px; border:1px solid var(--line2); background:rgba(15,23,42,0.02); border-radius:999px; padding:3px 8px; cursor:pointer; }
   .swatch{ width:10px; height:10px; border-radius:2px; }
   .legitem.active{ outline:2px solid rgba(37,99,235,0.55); outline-offset:1px; }
-  .figcap{ text-align:center; margin-top:6px; font-size:12px; }
+  .figcap{ text-align:center; margin-top:4px; font-size:11px; }
 
   /* Specimen classification selector (interactive) */
   .specPick{ margin-top:10px; }
@@ -148,12 +167,12 @@
   .specDot{ text-align:center; font-size:16px; font-weight:400; color:rgba(15,23,42,0.55); }
   .specSel{
     width:100%;
-    padding:6px 8px;
+    padding:4px 6px;
     border-radius:8px;
     border:1px solid rgba(15,23,42,0.35);
     background:#fff;
     font-family: Arial, sans-serif;
-    font-size:14px;
+    font-size:13px;
     font-weight:700;
     text-align:center;
     text-align-last:center;
@@ -166,7 +185,7 @@
   .contours{
     display:grid;
     grid-template-columns: 1fr 1fr;
-    gap:12px;
+    gap:10px;
   }
   @media (max-width: 1100px){
     .contours{ grid-template-columns: 1fr; }
@@ -177,14 +196,19 @@
     border:1px solid var(--line2);
     border-radius:12px;
     background:#ffffff;
-    padding:8px;
+    padding:6px;
+    height:250px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
   }
   .imgWrap img{
     width:100%;
-    height:auto;
+    height:100%;
     display:block;
     border-radius:8px;
     cursor:zoom-in;
+    object-fit:contain;
   }
   .imgWrap img.missing{ display:none; }
 
@@ -357,16 +381,52 @@
   .compactCard{ padding:10px 12px; }
   .compactCard .modeCardHead{ align-items:center; }
   .compactCard .small{ margin:0; }
-  .benchTableWrap{ margin-top:8px; overflow:auto; }
+  .benchTableWrap{ margin-top:8px; overflow-x:auto; overflow-y:auto; max-height:96px; border:1px solid var(--line2); border-radius:10px; scrollbar-gutter:stable both-edges; }
   .benchTableWrap table{ min-width:520px; }
+  .benchTableWrap thead th{ position:sticky; top:0; background:#fff; z-index:1; }
   .rightCardNote{ margin-top:6px; }
 
+
+  @media (min-width: 1700px){
+    main{ grid-template-columns: 560px minmax(0,1fr); }
+    .workspace{ grid-template-columns:minmax(0, 1fr) 620px; }
+    #plotSvg{ aspect-ratio:760 / 322; }
+    .imgWrap{ height:245px; }
+  }
+  #mlBenchCard .infobox, #feOutputCard .infobox{ padding:6px 8px; }
+  #mlBenchCard table td, #mlBenchCard table th{ padding:5px 5px; font-size:10.5px; }
+  #feOutputCard table td, #feOutputCard table th{ padding:5px 5px; }
+  #feOutputCard table td, #feOutputCard table th{ text-align:left; }
+  #feOutputCard{ margin-top:0; }
+  #feOutputCard table.twoCol{ table-layout:fixed; width:100%; border-collapse:collapse; }
+  #feOutputCard table.twoCol td{ padding:3px 4px; line-height:1.15; vertical-align:top; }
+  #feOutputCard table.twoCol td.labelCell{ color:var(--muted); width:7%; font-size:9.6px; padding-right:3px; }
+  #feOutputCard table.twoCol td.valCell{ text-align:right; white-space:nowrap; width:9.666%; font-size:10.2px; padding-left:2px; padding-right:8px; border-right:1px solid var(--line2); }
+  #feOutputCard table.twoCol tr td:last-child{ border-right:none; }
+  #feOutputCard table.twoCol td.valCell.warn{ color:#b00020; font-weight:700; }
+  #btnPng{ display:none !important; }
+  #benchSummaryCard{ padding:8px 10px; }
+  .benchSummaryGrid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; align-items:stretch; }
+  .benchMetric{ border:1px solid var(--line2); border-radius:10px; background:rgba(15,23,42,0.02); padding:6px 8px; display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:34px; }
+  .benchTextRow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+  .benchTextRow > div, .benchRef{ padding:4px 6px; }
+  .benchRef{ margin-top:2px; }
+  @media (max-width: 1300px){ .benchSummaryGrid, .benchTextRow{ grid-template-columns:1fr; } }
 
 </style>
 </head>
 <body>
 <header>
-  <div class="title">Reduced Web Section explorer and ML benchmark (7575 FE models)</div>
+  <div class="headerRow">
+    <div class="titleWrap">
+      <div class="title">Interactive FE database interrogation and ML backbone prediction for circular Reduced Web Section connections with isolated circular web openings (7,575 FE models).</div>
+      <div class="metaLine">Research and development: Meysam Bayat under supervision of Professor Konstantinos Daniel Tsavdaridis at City St George’s, University of London. For further information refer to Bayat and Tsavdaridis (2025-2026) <a href="https://doi.org/10.3389/fbuil.2025.1592665" target="_blank" rel="noopener">[1]</a> <a href="https://doi.org/10.1002/cepa.70170" target="_blank" rel="noopener">[2]</a> <a href="https://doi.org/10.21203/rs.3.rs-8506924/v1" target="_blank" rel="noopener">[3]</a>.</div>
+    </div>
+    <div class="brandBox" aria-label="Laboratory and institutional logos">
+      <img class="labBrand" src="3DMBC_logo.png" alt="3DMBC logo">
+      <img class="cityBrand" src="city-st-georges-responsive-logo.svg" alt="City St George’s, University of London logo">
+    </div>
+  </div>
 </header>
 
 <main>
@@ -424,7 +484,7 @@
 
       <div class="control">
         <div class="control-head">
-          <div class="label">Opening spacing, <span class="sym"><i>S</i>/<i>h</i></span> (%)</div>
+          <div class="label">Web opening distance from column face, <span class="sym"><i>S</i>/<i>h</i></span> (%)</div>
           <div class="value" id="valSh">-</div>
         </div>
         <input id="slSh" type="range" min="0" max="0" step="1" value="0">
@@ -438,7 +498,7 @@
 
       <div class="infobox">
         <div class="small muted" id="geomLine"></div>
-        <div class="small muted" id="steelLine" style="margin-top:2px;"></div>
+        <div id="steelLine" class="hide" aria-hidden="true"></div>
       </div>
 
       <div class="warnbox" id="warn"></div>
@@ -485,7 +545,7 @@
 
       <div class="control">
         <div class="control-head">
-          <div class="label">Opening spacing, <span class="sym"><i>S</i>/<i>h</i></span> (%)</div>
+          <div class="label">Web opening distance from column face, <span class="sym"><i>S</i>/<i>h</i></span> (%)</div>
           <div class="value" id="mlValSh">-</div>
         </div>
         <input id="mlSlSh" type="range" min="0" max="240" step="1" value="140">
@@ -514,7 +574,7 @@
       <h2>Case guide and specimen classification</h2>
       
 <table class="thesis case-matrix" id="caseMatrix">
-  <caption>Table 1.5: Parametric combinations of (<span class="sym"><i>S</i>/<i>h</i></span>) and (<span class="sym"><i>d</i><sub>o</sub>/<i>h</i></span>) in each batch of analysis</caption>
+  <caption>Parametric combinations of (<span class="sym"><i>S</i>/<i>h</i></span>) and (<span class="sym"><i>d</i><sub>o</sub>/<i>h</i></span>) in each batch of analysis</caption>
   <thead>
     <tr>
       <th style="border-right:0;"></th>
@@ -529,12 +589,12 @@
     <tr><th class="rowhdr">60</th><td class="case-cell mono" data-do="30" data-sh="60" data-case="C00">C00</td><td class="case-cell mono" data-do="35" data-sh="60" data-case="C10">C10</td><td class="case-cell mono" data-do="40" data-sh="60" data-case="C20">C20</td><td class="case-cell mono" data-do="45" data-sh="60" data-case="C30">C30</td><td class="case-cell mono" data-do="50" data-sh="60" data-case="C40">C40</td><td class="case-cell mono" data-do="55" data-sh="60" data-case="C50">C50</td><td class="case-cell mono" data-do="60" data-sh="60" data-case="C60">C60</td><td class="case-cell mono" data-do="65" data-sh="60" data-case="C70">C70</td><td class="case-cell mono" data-do="70" data-sh="60" data-case="C80">C80</td><td class="case-cell mono" data-do="75" data-sh="60" data-case="C90">C90</td></tr><tr><th class="rowhdr">80</th><td class="case-cell mono" data-do="30" data-sh="80" data-case="C01">C01</td><td class="case-cell mono" data-do="35" data-sh="80" data-case="C11">C11</td><td class="case-cell mono" data-do="40" data-sh="80" data-case="C21">C21</td><td class="case-cell mono" data-do="45" data-sh="80" data-case="C31">C31</td><td class="case-cell mono" data-do="50" data-sh="80" data-case="C41">C41</td><td class="case-cell mono" data-do="55" data-sh="80" data-case="C51">C51</td><td class="case-cell mono" data-do="60" data-sh="80" data-case="C61">C61</td><td class="case-cell mono" data-do="65" data-sh="80" data-case="C71">C71</td><td class="case-cell mono" data-do="70" data-sh="80" data-case="C81">C81</td><td class="case-cell mono" data-do="75" data-sh="80" data-case="C91">C91</td></tr><tr><th class="rowhdr">100</th><td class="case-cell mono" data-do="30" data-sh="100" data-case="C02">C02</td><td class="case-cell mono" data-do="35" data-sh="100" data-case="C12">C12</td><td class="case-cell mono" data-do="40" data-sh="100" data-case="C22">C22</td><td class="case-cell mono" data-do="45" data-sh="100" data-case="C32">C32</td><td class="case-cell mono" data-do="50" data-sh="100" data-case="C42">C42</td><td class="case-cell mono" data-do="55" data-sh="100" data-case="C52">C52</td><td class="case-cell mono" data-do="60" data-sh="100" data-case="C62">C62</td><td class="case-cell mono" data-do="65" data-sh="100" data-case="C72">C72</td><td class="case-cell mono" data-do="70" data-sh="100" data-case="C82">C82</td><td class="case-cell mono" data-do="75" data-sh="100" data-case="C92">C92</td></tr><tr><th class="rowhdr">120</th><td class="case-cell mono" data-do="30" data-sh="120" data-case="C03">C03</td><td class="case-cell mono" data-do="35" data-sh="120" data-case="C13">C13</td><td class="case-cell mono" data-do="40" data-sh="120" data-case="C23">C23</td><td class="case-cell mono" data-do="45" data-sh="120" data-case="C33">C33</td><td class="case-cell mono" data-do="50" data-sh="120" data-case="C43">C43</td><td class="case-cell mono" data-do="55" data-sh="120" data-case="C53">C53</td><td class="case-cell mono" data-do="60" data-sh="120" data-case="C63">C63</td><td class="case-cell mono" data-do="65" data-sh="120" data-case="C73">C73</td><td class="case-cell mono" data-do="70" data-sh="120" data-case="C83">C83</td><td class="case-cell mono" data-do="75" data-sh="120" data-case="C93">C93</td></tr><tr><th class="rowhdr">140</th><td class="case-cell mono" data-do="30" data-sh="140" data-case="C04">C04</td><td class="case-cell mono" data-do="35" data-sh="140" data-case="C14">C14</td><td class="case-cell mono" data-do="40" data-sh="140" data-case="C24">C24</td><td class="case-cell mono" data-do="45" data-sh="140" data-case="C34">C34</td><td class="case-cell mono" data-do="50" data-sh="140" data-case="C44">C44</td><td class="case-cell mono" data-do="55" data-sh="140" data-case="C54">C54</td><td class="case-cell mono" data-do="60" data-sh="140" data-case="C64">C64</td><td class="case-cell mono" data-do="65" data-sh="140" data-case="C74">C74</td><td class="case-cell mono" data-do="70" data-sh="140" data-case="C84">C84</td><td class="case-cell mono" data-do="75" data-sh="140" data-case="C94">C94</td></tr><tr><th class="rowhdr">160</th><td class="case-cell mono" data-do="30" data-sh="160" data-case="C05">C05</td><td class="case-cell mono" data-do="35" data-sh="160" data-case="C15">C15</td><td class="case-cell mono" data-do="40" data-sh="160" data-case="C25">C25</td><td class="case-cell mono" data-do="45" data-sh="160" data-case="C35">C35</td><td class="case-cell mono" data-do="50" data-sh="160" data-case="C45">C45</td><td class="case-cell mono" data-do="55" data-sh="160" data-case="C55">C55</td><td class="case-cell mono" data-do="60" data-sh="160" data-case="C65">C65</td><td class="case-cell mono" data-do="65" data-sh="160" data-case="C75">C75</td><td class="case-cell mono" data-do="70" data-sh="160" data-case="C85">C85</td><td class="case-cell mono" data-do="75" data-sh="160" data-case="C95">C95</td></tr><tr><th class="rowhdr">180</th><td class="case-cell mono" data-do="30" data-sh="180" data-case="C06">C06</td><td class="case-cell mono" data-do="35" data-sh="180" data-case="C16">C16</td><td class="case-cell mono" data-do="40" data-sh="180" data-case="C26">C26</td><td class="case-cell mono" data-do="45" data-sh="180" data-case="C36">C36</td><td class="case-cell mono" data-do="50" data-sh="180" data-case="C46">C46</td><td class="case-cell mono" data-do="55" data-sh="180" data-case="C56">C56</td><td class="case-cell mono" data-do="60" data-sh="180" data-case="C66">C66</td><td class="case-cell mono" data-do="65" data-sh="180" data-case="C76">C76</td><td class="case-cell mono" data-do="70" data-sh="180" data-case="C86">C86</td><td class="case-cell mono" data-do="75" data-sh="180" data-case="C96">C96</td></tr><tr><th class="rowhdr">200</th><td class="case-cell mono" data-do="30" data-sh="200" data-case="C07">C07</td><td class="case-cell mono" data-do="35" data-sh="200" data-case="C17">C17</td><td class="case-cell mono" data-do="40" data-sh="200" data-case="C27">C27</td><td class="case-cell mono" data-do="45" data-sh="200" data-case="C37">C37</td><td class="case-cell mono" data-do="50" data-sh="200" data-case="C47">C47</td><td class="case-cell mono" data-do="55" data-sh="200" data-case="C57">C57</td><td class="case-cell mono" data-do="60" data-sh="200" data-case="C67">C67</td><td class="case-cell mono" data-do="65" data-sh="200" data-case="C77">C77</td><td class="case-cell mono" data-do="70" data-sh="200" data-case="C87">C87</td><td class="case-cell mono" data-do="75" data-sh="200" data-case="C97">C97</td></tr><tr><th class="rowhdr">220</th><td class="case-cell mono" data-do="30" data-sh="220" data-case="C08">C08</td><td class="case-cell mono" data-do="35" data-sh="220" data-case="C18">C18</td><td class="case-cell mono" data-do="40" data-sh="220" data-case="C28">C28</td><td class="case-cell mono" data-do="45" data-sh="220" data-case="C38">C38</td><td class="case-cell mono" data-do="50" data-sh="220" data-case="C48">C48</td><td class="case-cell mono" data-do="55" data-sh="220" data-case="C58">C58</td><td class="case-cell mono" data-do="60" data-sh="220" data-case="C68">C68</td><td class="case-cell mono" data-do="65" data-sh="220" data-case="C78">C78</td><td class="case-cell mono" data-do="70" data-sh="220" data-case="C88">C88</td><td class="case-cell mono" data-do="75" data-sh="220" data-case="C98">C98</td></tr><tr><th class="rowhdr">240</th><td class="case-cell mono" data-do="30" data-sh="240" data-case="C09">C09</td><td class="case-cell mono" data-do="35" data-sh="240" data-case="C19">C19</td><td class="case-cell mono" data-do="40" data-sh="240" data-case="C29">C29</td><td class="case-cell mono" data-do="45" data-sh="240" data-case="C39">C39</td><td class="case-cell mono" data-do="50" data-sh="240" data-case="C49">C49</td><td class="case-cell mono" data-do="55" data-sh="240" data-case="C59">C59</td><td class="case-cell mono" data-do="60" data-sh="240" data-case="C69">C69</td><td class="case-cell mono" data-do="65" data-sh="240" data-case="C79">C79</td><td class="case-cell mono" data-do="70" data-sh="240" data-case="C89">C89</td><td class="case-cell mono" data-do="75" data-sh="240" data-case="C99">C99</td></tr>
   </tbody>
 </table>
-<div class="small muted" style="margin-top:6px;">
-  C00 to C99 are reduced web section opening cases as shown in Table 1.5. C100 is the full section (no opening).
+<div class="small muted" id="caseGuideNote" style="margin-top:6px;">
+  C00 to C99 are reduced web section opening cases as shown in the matrix above. C100 is the full section.
 </div>
 <div class="btnrow" style="margin-top:8px;">
   <button id="btnFull">Select C100 (Full section)</button>
-  <div class="small muted" id="caseSelHint" style="margin-left:10px;">Click a cell in Table 1.5 to select a case.</div>
+  <div class="small muted" id="caseSelHint" style="margin-left:10px;">Click a cell in the matrix above to select a case.</div>
 </div>
 
       <div class="divider"></div>
@@ -551,7 +611,7 @@
   <tbody>
     <tr>
       <td style="text-align:left;"><span class="sym"><i>S</i></span> and <span class="sym"><i>d</i><sub>o</sub></span></td>
-      <td style="text-align:left;">100 configurations (Table 1.5) + Solid</td>
+      <td style="text-align:left;">100 configurations + Solid</td>
       <td>101</td>
     </tr>
     <tr>
@@ -588,7 +648,7 @@
   <div class="specGrid specRow">
     <select id="pickL" class="specSel" aria-label="Batch label"></select>
     <div class="specDot">.</div>
-    <select id="pickProfile" class="specSel" aria-label="Beam profile"></select>
+    <select id="pickProfile" class="specSel" aria-label="Beam profile (IPE)"></select>
     <div class="specDot">.</div>
     <select id="pickGrade" class="specSel" aria-label="Beam steel grade"></select>
     <div class="specDot">.</div>
@@ -598,7 +658,7 @@
   <div class="specGrid specBottom" aria-hidden="true">
     <div class="lbl">Beam span-to-depth<br>ratio</div>
     <div></div>
-    <div class="lbl">Beam profile</div>
+    <div class="lbl">Beam profile (IPE)</div>
     <div></div>
     <div class="lbl">Beam steel<br>grade</div>
     <div></div>
@@ -609,35 +669,6 @@
 
     </div>
 
-    <div class="card" id="feOutputCard">
-      <h2>FE outputs</h2>
-      <table>
-        <tbody id="outTable"></tbody>
-      </table>
-      <div class="divider"></div>
-      <div class="small" style="font-weight:700;">Prequalification benchmark</div>
-      <div class="row" style="margin-top:6px;">
-        <div class="small muted">Strength retention at 0.04 rad</div>
-        <div id="qualMp"></div>
-      </div>
-      <div class="row" style="margin-top:6px;">
-        <div class="small muted">Drift-capacity benchmark using <span class="sym"><i>θ</i><sub>u</sub></span> from the 20% drop in <span class="sym"><i>M</i><sub>c</sub></span></div>
-        <div id="qualThetaU"></div>
-      </div>
-      <div class="small muted" id="qualMargins" style="margin-top:6px;"></div>
-      <div class="small muted" id="qualThetaInfo" style="margin-top:4px;"></div>
-
-      <div class="infobox" style="margin-top:10px;">
-        <div class="small muted">
-          In this thesis, prequalification language is used as benchmarking against published AISC/FEMA acceptance criteria. Formal AISC prequalification is test-evidence based under <span class="mono">ANSI/AISC 358</span>. The strength-retention check shown here follows <span class="mono">ANSI/AISC 341-16 Section E3.6b</span>, while the drift-capacity benchmark uses <span class="sym"><i>θ</i><sub>u</sub></span> taken at the 20% drop from <span class="sym"><i>M</i><sub>c</sub></span>, consistent with Chapter 3.
-          <div style="margin-top:4px;">
-            <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>,
-            <span class="sym"><i>θ</i><sub>u</sub></span> ≥ 0.04 rad.
-          </div>
-        </div>
-      </div>
-      <div id="qualMpRws" class="hide" aria-hidden="true"></div>
-    </div>
   </section>
 
   <section class="workspace">
@@ -672,7 +703,7 @@
       </div>
 
       <div class="small muted mlNote rightCardNote" id="mlBenchNote">
-        In FE mode the active FE case is compared against the ML prediction. In ML mode an exact FE benchmark appears only when the free ML input matches a discrete FE case.
+        FE mode compares the selected FE case against the ML prediction. ML mode shows exact FE benchmarking only at discrete FE design points.
       </div>
 
       <div class="infobox" id="mlSummary" style="margin-top:8px;">
@@ -697,6 +728,26 @@
       <div class="infobox" id="mlGlobalBox" style="margin-top:10px;">
         <div class="small muted">Dataset-wide benchmark has not been run yet.</div>
       </div>
+    </div>
+
+    <div class="card" id="benchSummaryCard">
+      <h2>Benchmark overview</h2>
+      <div class="benchSummaryGrid">
+        <div class="benchMetric">
+          <div class="small muted"><span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span></div>
+          <div id="qualMp"></div>
+        </div>
+        <div class="benchMetric">
+          <div class="small muted"><span class="sym"><i>θ</i><sub>u</sub></span> ≥ 0.04</div>
+          <div id="qualThetaU"></div>
+        </div>
+      </div>
+      <div class="benchTextRow">
+        <div class="small muted" id="qualMargins"></div>
+        <div class="small muted" id="qualThetaInfo"></div>
+      </div>
+      <div class="benchRef small muted">Reference benchmark shown: <span class="mono">AISC 341-16 Section E3.6b</span> strength check <span class="sym"><i>M</i><sub>0.04</sub></span> ≥ 0.8<span class="sym"><i>M</i><sub>p</sub></span>; additional drift-capacity indicator <span class="sym"><i>θ</i><sub>u</sub></span> ≥ 0.04 rad, with <span class="sym"><i>θ</i><sub>u</sub></span> taken at the 20% drop from <span class="sym"><i>M</i><sub>c</sub></span>.</div>
+      <div id="qualMpRws" class="hide" aria-hidden="true"></div>
     </div>
 
     <div class="card" id="contourCard">
@@ -729,6 +780,13 @@
         </div>
       </div>
 </div>
+
+    <div class="card" id="feOutputCard">
+      <h2>FE outputs</h2>
+      <table class="twoCol">
+        <tbody id="outTable"></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
@@ -1135,9 +1193,20 @@
     ];
 
     let html = '';
-    for (const o of out) {
-      const cls = o.warn ? 'mono warn' : 'mono';
-      html += `<tr><td>${o.lab}</td><td class="${cls}">${o.val}</td></tr>`;
+    const outputPairsPerRow = 6;
+    for (let i = 0; i < out.length; i += outputPairsPerRow) {
+      const rowItems = out.slice(i, i + outputPairsPerRow);
+      html += '<tr>';
+      for (let j = 0; j < outputPairsPerRow; j++) {
+        const item = rowItems[j];
+        if (item) {
+          const cls = item.warn ? 'mono valCell warn' : 'mono valCell';
+          html += `<td class="labelCell">${item.lab}</td><td class="${cls}">${item.val}</td>`;
+        } else {
+          html += `<td class="labelCell"></td><td class="valCell"></td>`;
+        }
+      }
+      html += '</tr>';
     }
     el.outTable.innerHTML = html;
 
@@ -1164,8 +1233,8 @@
   function updateInfoLines(r) {
     const h = r[schema.h_mm], b = r[schema.b_mm], tw = r[schema.tw_mm], tf = r[schema.tf_mm];
     const fy = r[schema.Fy_MPa];
-    el.geomLine.innerHTML = `Section geometry (from dataset): <span class="mono">h=${fmt1(h)} mm, b=${fmt1(b)} mm, t<sub>w</sub>=${fmt1(tw)} mm, t<sub>f</sub>=${fmt1(tf)} mm</span>.`;
-    el.steelLine.innerHTML = `Steel grade detail (from dataset): <span class="mono">F<sub>y</sub>=${fmt1(fy)} MPa</span>.`;
+    el.geomLine.innerHTML = `Section geometry (from dataset): <span class="mono">h=${fmt1(h)} mm, b=${fmt1(b)} mm, t<sub>w</sub>=${fmt1(tw)} mm, t<sub>f</sub>=${fmt1(tf)} mm, F<sub>y</sub>=${fmt1(fy)} MPa</span>.`;
+    if(el.steelLine) el.steelLine.innerHTML = '';
   }
 
   function updateWarn(r) {
@@ -2456,7 +2525,7 @@
     const W = el.svg.viewBox.baseVal.width || el.svg.clientWidth;
     const H = el.svg.viewBox.baseVal.height || el.svg.clientHeight;
 
-    const margin = {left:60, right:18, top:36, bottom:44};
+    const margin = {left:104, right:24, top:42, bottom:88};
     const innerW = W - margin.left - margin.right;
     const innerH = H - margin.top - margin.bottom;
 
@@ -2564,9 +2633,9 @@
       const x = xScale(xt);
       const t = svgEl('text', {
         x:x,
-        y: margin.top + innerH + 16,
+        y: margin.top + innerH + 28,
         'text-anchor':'middle',
-        'font-size':'10',
+        'font-size':'24',
         fill:'rgba(15,23,42,0.75)'
       });
       t.textContent = (xt === 0) ? '0' : xt.toFixed(2);
@@ -2575,20 +2644,20 @@
 
     const xLab = svgEl('text', {
       x: margin.left + innerW/2,
-      y: margin.top + innerH + 32,
+      y: margin.top + innerH + 62,
       'text-anchor':'middle',
-      'font-size':'10',
+      'font-size':'26',
       fill:'rgba(15,23,42,0.9)'
     });
     xLab.textContent = 'Rotation (rad)';
     g.appendChild(xLab);
 
     const yLab = svgEl('text', {
-      x: 16,
+      x: 34,
       y: margin.top + innerH/2,
-      transform: `rotate(-90 16 ${margin.top + innerH/2})`,
+      transform: `rotate(-90 34 ${margin.top + innerH/2})`,
       'text-anchor':'middle',
-      'font-size':'10',
+      'font-size':'26',
       fill:'rgba(15,23,42,0.9)'
     });
     yLab.textContent = 'Moment (kN·m)';
@@ -2598,9 +2667,9 @@
       const y = yScale(yt);
       const t = svgEl('text', {
         x: margin.left - 8,
-        y: y + 4,
+        y: y + 7,
         'text-anchor':'end',
-        'font-size':'10',
+        'font-size':'24',
         fill:'rgba(15,23,42,0.75)'
       });
       t.textContent = yt.toFixed(0);
@@ -2934,7 +3003,7 @@
     drawPlot();
   });
   el.btnSvg.addEventListener('click', exportSvg);
-  el.btnPng.addEventListener('click', () => exportPng(3));
+  if (el.btnPng) el.btnPng.addEventListener('click', () => exportPng(3));
   if (el.btnMlBench) el.btnMlBench.addEventListener('click', runFullMlBenchmark);
   if (el.btnShowFe) el.btnShowFe.addEventListener('click', toggleFeCurve);
   if (el.btnShowMl) el.btnShowMl.addEventListener('click', toggleMlCurve);
