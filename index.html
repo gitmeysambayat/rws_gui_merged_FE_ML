@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Chapter 7 companion GUI for FE benchmark review and ML-based backbone curve prediction for circular Reduced Web Section connections.">
+<meta name="description" content="Chapter 6 complementary GUI for FE benchmark review and ML-based backbone curve prediction for circular Reduced Web Section connections.">
 <meta name="theme-color" content="#f6f7fb">
 <title>RWS Explorer and FE–ML Benchmark</title>
 <link rel="icon" type="image/png" href="favicon_3dmbc.png">
@@ -194,6 +194,10 @@
   }
   .contourItem{ }
   .contourHead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:6px; }
+  .contourHead .proxyStatus{
+    color:#92400e;
+    font-weight:700;
+  }
   .imgWrap{
     border:1px solid var(--line2);
     border-radius:12px;
@@ -213,6 +217,7 @@
     object-fit:contain;
   }
   .imgWrap img.missing{ display:none; }
+  .contourNote{ margin-top:8px; }
 
   /* Image modal */
   .modal{
@@ -574,7 +579,7 @@
 
     <div class="card" id="feCaseCard">
       <h2>Case guide and specimen classification</h2>
-      
+
 <table class="thesis case-matrix" id="caseMatrix">
   <caption>Parametric combinations of (<span class="sym"><i>S</i>/<i>h</i></span>) and (<span class="sym"><i>d</i><sub>o</sub>/<i>h</i></span>) in each batch of analysis</caption>
   <thead>
@@ -600,7 +605,7 @@
 </div>
 
       <div class="divider"></div>
-      
+
 <table class="thesis">
   <caption>Table 1.6: Variables and modelling options</caption>
   <thead>
@@ -640,7 +645,7 @@
 </table>
 
       <div class="divider"></div>
-      
+
 <div class="specPick" aria-label="Specimen classification selector">
   <div class="specGrid specTop">
     <div class="left">Batch label</div>
@@ -781,6 +786,7 @@
           </div>
         </div>
       </div>
+      <div class="small muted contourNote" id="contourHint"></div>
 </div>
 
     <div class="card" id="feOutputCard">
@@ -852,7 +858,7 @@
     mlBenchCard: document.getElementById('mlBenchCard'),
     mlBenchNote: document.getElementById('mlBenchNote'),
     contourCard: document.getElementById('contourCard'),
-    
+
     slProfile: document.getElementById('slProfile'),
     slGrade: document.getElementById('slGrade'),
     slL: document.getElementById('slL'),
@@ -1319,19 +1325,36 @@
   function setImgWithFallback(imgEl, statusEl, paths) {
     if (!imgEl || !statusEl) return;
     let i = 0;
+    let active = null;
     const tryLoad = () => {
       if (i >= paths.length) {
         imgEl.classList.add('missing');
         imgEl.removeAttribute('src');
+        imgEl.removeAttribute('data-contour-note');
+        imgEl.removeAttribute('data-contour-source');
+        statusEl.classList.remove('proxyStatus');
         statusEl.textContent = 'Not available';
         return;
       }
       const p = paths[i++];
+      active = (typeof p === 'string') ? { url: p, note: '', source: '' } : p;
       imgEl.classList.remove('missing');
-      statusEl.textContent = 'Loading...';
-      imgEl.src = p;
+      imgEl.dataset.contourNote = active.note || '';
+      imgEl.dataset.contourSource = active.source || '';
+      statusEl.classList.remove('proxyStatus');
+      statusEl.textContent = active.note ? 'Loading proxy...' : 'Loading...';
+      imgEl.src = active.url;
+      imgEl.alt = active.alt || imgEl.alt;
     };
-    imgEl.onload = () => { statusEl.textContent = ''; };
+    imgEl.onload = () => {
+      if (active && active.note) {
+        statusEl.classList.add('proxyStatus');
+        statusEl.textContent = active.note;
+      } else {
+        statusEl.classList.remove('proxyStatus');
+        statusEl.textContent = '';
+      }
+    };
     imgEl.onerror = () => { tryLoad(); };
     tryLoad();
   }
@@ -1340,6 +1363,28 @@
     const parts = String(code || '').split('.');
     if (parts.length < 4) return null;
     return { L: parts[0], profile: parts[1], grade: parts[2], caseId: parts[3] };
+  }
+
+  function contourCandidate(url, note = '', source = '', alt = '') {
+    return { url, note, source, alt };
+  }
+
+  function appendContourCandidates(candidates, base, folder, modelCode, suffix, note = '', source = '') {
+    const parts = parseModelCodeParts(modelCode);
+    if (parts) {
+      candidates.push(contourCandidate(
+        `${base}/${folder}/${parts.grade}/${parts.profile}/${modelCode}${suffix}.png`,
+        note,
+        source
+      ));
+      candidates.push(contourCandidate(
+        `${base}/${folder}/${parts.grade}/${parts.profile}/${modelCode}${suffix}.webp`,
+        note,
+        source
+      ));
+    }
+    candidates.push(contourCandidate(`${base}/${folder}/${modelCode}${suffix}.png`, note, source));
+    candidates.push(contourCandidate(`${base}/${folder}/${modelCode}${suffix}.webp`, note, source));
   }
 
   function updateContours(modelCode) {
@@ -1356,17 +1401,8 @@
 
     // Preferred folder layout (recommended for GitHub): contours/VonMises/<Grade>/<Profile>/<file>
     // Fallback layout: contours/VonMises/<file>
-    if (parts) {
-      vmCandidates.push(`${base}/VonMises/${parts.grade}/${parts.profile}/${modelCode}_VonMises.png`);
-      vmCandidates.push(`${base}/VonMises/${parts.grade}/${parts.profile}/${modelCode}_VonMises.webp`);
-      peeqCandidates.push(`${base}/PEEQ/${parts.grade}/${parts.profile}/${modelCode}_PEEQ.png`);
-      peeqCandidates.push(`${base}/PEEQ/${parts.grade}/${parts.profile}/${modelCode}_PEEQ.webp`);
-    }
-
-    vmCandidates.push(`${base}/VonMises/${modelCode}_VonMises.png`);
-    vmCandidates.push(`${base}/VonMises/${modelCode}_VonMises.webp`);
-    peeqCandidates.push(`${base}/PEEQ/${modelCode}_PEEQ.png`);
-    peeqCandidates.push(`${base}/PEEQ/${modelCode}_PEEQ.webp`);
+    appendContourCandidates(vmCandidates, base, 'VonMises', modelCode, '_VonMises');
+    appendContourCandidates(peeqCandidates, base, 'PEEQ', modelCode, '_PEEQ');
 
     if (el.contourHint) {
       if (parts) {
@@ -1385,8 +1421,20 @@
   function clearContours(reason = 'Not available') {
     if (el.vmStatus) el.vmStatus.textContent = reason;
     if (el.peeqStatus) el.peeqStatus.textContent = reason;
-    if (el.imgVonMises) { el.imgVonMises.classList.add('missing'); el.imgVonMises.removeAttribute('src'); }
-    if (el.imgPEEQ) { el.imgPEEQ.classList.add('missing'); el.imgPEEQ.removeAttribute('src'); }
+    if (el.vmStatus) el.vmStatus.classList.remove('proxyStatus');
+    if (el.peeqStatus) el.peeqStatus.classList.remove('proxyStatus');
+    if (el.imgVonMises) {
+      el.imgVonMises.classList.add('missing');
+      el.imgVonMises.removeAttribute('src');
+      el.imgVonMises.removeAttribute('data-contour-note');
+      el.imgVonMises.removeAttribute('data-contour-source');
+    }
+    if (el.imgPEEQ) {
+      el.imgPEEQ.classList.add('missing');
+      el.imgPEEQ.removeAttribute('src');
+      el.imgPEEQ.removeAttribute('data-contour-note');
+      el.imgPEEQ.removeAttribute('data-contour-source');
+    }
     if (el.contourHint) el.contourHint.textContent = '';
   }
 
@@ -1395,14 +1443,16 @@
       el.imgVonMises.addEventListener('click', () => {
         const src = el.imgVonMises.getAttribute('src');
         if (!src) return;
-        openModal(`${el.modelName.textContent} | von Mises`, src);
+        const note = el.imgVonMises.dataset.contourNote ? ` | ${el.imgVonMises.dataset.contourNote}` : '';
+        openModal(`${el.modelName.textContent} | von Mises${note}`, src);
       });
     }
     if (el.imgPEEQ) {
       el.imgPEEQ.addEventListener('click', () => {
         const src = el.imgPEEQ.getAttribute('src');
         if (!src) return;
-        openModal(`${el.modelName.textContent} | PEEQ`, src);
+        const note = el.imgPEEQ.dataset.contourNote ? ` | ${el.imgPEEQ.dataset.contourNote}` : '';
+        openModal(`${el.modelName.textContent} | PEEQ${note}`, src);
       });
     }
   }

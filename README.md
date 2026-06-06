@@ -4,13 +4,13 @@
 
 ## Live GUI
 
-[Open the FE and ML backbone prediction GUI](https://gitmeysambayat.github.io/rws_gui_merged_FE_ML/)
+[Open the FE and ML backbone prediction GUI](https://gitmeysambayat.github.io/RWS-PhD-Thesis-GUIs/chapter-6-ml-backbone-gui/)
 
 ## Purpose
 
 This GUI supports FE benchmark review and ML-based backbone curve prediction for circular RWS connections. The app combines the embedded FE-derived database, a local `xgb_model.json` model file, and contour image assets for selected FE cases.
 
-You identified this GUI as Chapter 7 related. In the supplied thesis file, the detailed ML GUI material is developed in the machine-learning chapter, while Chapter 7 summarises the explainable ML surrogate and its browser-based deployment. This README therefore frames the repository as supporting the Chapter 7 conclusion and deployment narrative.
+In the submitted thesis, this GUI belongs to Chapter 6, "Explainable Machine-Learning-Based Prediction of Backbone Curves and GUI", where the model benchmarking, explainability, and browser-based deployment are developed.
 
 ## Main Features
 
